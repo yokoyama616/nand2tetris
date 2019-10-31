@@ -1,0 +1,278 @@
+<html><head><script>
+// 本のAPIを愚直に実装したが、高級言語だともっと簡単に実装できると思う
+
+// コマンド種類の定数定義
+const A_COMMAND = 1;
+const C_COMMAND = 2;
+const L_COMMAND = 3;
+
+// 入力内容はグローバル領域に保存
+let inputs; // 入力内容(改行区切りの配列)
+let outputs;// 出力
+let symbolTable = {}; // シンボルテーブル
+let index = 0; // 現在の行数
+
+// アセンブラ処理
+function run() {
+    // Parser:コンストラクタ/初期化に該当。入力内容を読み込む
+    inputs = document.form.input.value.split("\n");
+    // 6.3.5 シンボルテーブルのスキャン処理
+    scan();
+
+    index = 0;
+    outputs = "";
+    // コマンドが存在するかの確認
+    while (hasMoreCommands()) {
+        // コマンドの種類により処理を変える
+        switch (commandType()) {
+            case A_COMMAND: // A命令は、シンボル or 10進数の数値である
+                let s = symbol();
+                if (isNaN(parseInt(s))) { // シンボルの場合は、シンボルテーブルから取得したアドレス出力
+                    output(symbolTable[s]);
+                } else {// 数値の場合は、2進数に変換して出力
+                    output(toBinary(s));
+                }
+                break;
+            case C_COMMAND:// C命令はdest=comp;jump
+                output("111" + codeComp(comp()) + codeDest(dest()) + codeJump(jump()));
+                break;
+            default:
+                break;
+        }
+        // 次の入力コマンドを読み込む
+        advance();
+    }
+    // 出力
+    document.form.output.value = outputs;
+}
+
+// 6.3.5シンボルの読み込み
+function scan() {
+    let convertInputs = "";
+    // コメントと空白行を除外
+    inputs.forEach(val => {
+        let c = val.replace(/ /g, "");
+        if (c.length === 0 || c.includes("//")) return;
+        convertInputs += c + "\n";
+    });
+    inputs = convertInputs.split("\n");
+    index = 0;
+
+    // 定義済みシンボルテーブルの作成
+    symbolTable = {};
+    symbolTable["SP"] = toBinary("0");
+    symbolTable["LCL"] = toBinary("1");
+    symbolTable["ARG"] = toBinary("2");
+    symbolTable["THIS"] = toBinary("3");
+    symbolTable["THAT"] = toBinary("4");
+    symbolTable["R0"] = toBinary("0");
+    symbolTable["R1"] = toBinary("1");
+    symbolTable["R2"] = toBinary("2");
+    symbolTable["R3"] = toBinary("3");
+    symbolTable["R4"] = toBinary("4");
+    symbolTable["R5"] = toBinary("5");
+    symbolTable["R6"] = toBinary("6");
+    symbolTable["R7"] = toBinary("7");
+    symbolTable["R8"] = toBinary("8");
+    symbolTable["R9"] = toBinary("9");
+    symbolTable["R10"] = toBinary("10");
+    symbolTable["R11"] = toBinary("11");
+    symbolTable["R12"] = toBinary("12");
+    symbolTable["R13"] = toBinary("13");
+    symbolTable["R14"] = toBinary("14");
+    symbolTable["R15"] = toBinary("15");
+    symbolTable["SCREEN"] = toBinary("16384");
+    symbolTable["KBD"] = toBinary("24576");
+    let lIndex = 0;
+    // p127 1回目のパス シンボルテーブルだけ作成する
+    while (hasMoreCommands()) {
+        if (commandType() === L_COMMAND) {// シンボルテーブルに現在のコマンドのアドレスを格納
+            symbolTable[symbol()] = toBinary(lIndex.toString());
+        } else { // A or C Commandのカウントアップ
+            ++lIndex;
+        }
+        advance();
+    }
+
+    // 2回目のパス A命令の変数に格納していく
+    index = 0;
+    let aIndex = 16;
+    while (hasMoreCommands()) {
+        let sym = symbol();
+        if (commandType() === A_COMMAND && // A命令
+            isNaN(parseInt(sym)) && // シンボル
+            symbolTable[sym] === undefined) { // 未定義のシンボル
+                // 新しいアドレスを格納
+                symbolTable[sym] = toBinary(aIndex.toString());
+                ++aIndex;
+        }
+        advance();
+    }
+}
+
+// 10進数の文字から16桁の2進数に変換
+function toBinary(n) {
+    return ("0000000000000000" + parseInt(n).toString(2)).slice(-16)
+}
+
+function output(out) {
+    outputs += out + "\r\n";
+}
+
+// Parse 入力にまだコマンドが存在するか？
+function hasMoreCommands() {
+    return index < inputs.length;
+}
+
+// Parser 入力から次のコマンドを読みそれを現在のコマンドにする
+function advance() {
+    if (hasMoreCommands()) index++;
+}
+
+// Parser 現コマンドの種類を返す
+function commandType() {
+    let c = inputs[index];
+    if (c.includes("@")) return A_COMMAND; // @があればA命令
+    if (c.includes("=") || c.includes(";")) return C_COMMAND; // = or ;があればC命令
+    return L_COMMAND; // それ以外はラベル
+}
+
+// Parser A or L_COMMANDで呼ばれる「@ ()」を排除した文字 or 数字を返す
+function symbol() {
+    return inputs[index].replace(/[@)(]/g, "")
+}
+
+// Parser C命令の時のみdestニーモニック(null,M,ADなど)を返す
+function dest() {
+    let c = inputs[index];
+    if (!c.includes("=")) return "null"; // =がない場合はnull
+    return c.substring(0, c.indexOf("="));// =の左辺を返す
+}
+
+// Parser C命令の時のみ compを返す
+function comp() {
+    let c = inputs[index];
+    let d = c.substring(c.indexOf("=") + 1); // =まで除外
+    return d.includes(";") ? d.substring(0, d.indexOf(";")) : d; // ;まで取得
+}
+
+// Parser C命令の時のみ jumpを返す
+function jump() {
+    let c = inputs[index];
+    if (!c.includes(";")) return "null"; // ;がないならnull
+    return c.substring(c.indexOf(";") + 1);
+}
+
+function codeDest(d) {
+    let r = "";
+    r += d.includes("A") ? "1" : "0";
+    r += d.includes("D") ? "1" : "0";
+    r += d.includes("M") ? "1" : "0";
+    return r;
+}
+
+function codeComp(c) {
+    let r = "";
+    r += c.includes("M") ? "1" : "0"; // Mがある場合はaは1
+    // 難しいので対応表作る
+    switch (c.replace("M", "A")) {// MをAに変換
+        case "0":
+            r += "101010";
+            break;
+        case "1":
+            r += "111111";
+            break;
+        case "-1":
+            r += "111010";
+            break;
+        case "D":
+            r += "001100";
+            break;
+        case "A":
+            r += "110000";
+            break;
+        case "!D":
+            r += "001101";
+            break;
+        case "!A":
+            r += "110001";
+            break;
+        case "-D":
+            r += "001111";
+            break;
+        case "-A":
+            r += "110011";
+            break;
+        case "D+1":
+            r += "011111";
+            break;
+        case "A+1":
+            r += "110111";
+            break;
+        case "D-1":
+            r += "001110";
+            break;
+        case "A-1":
+            r += "110010";
+            break;
+        case "D+A":
+            r += "000010";
+            break;
+        case "D-A":
+            r += "010011";
+            break;
+        case "A-D":
+            r += "000111";
+            break;
+        case "D&A":
+            r += "000000";
+            break;
+        case "D|A":
+            r += "010101";
+            break;
+    }
+    return r;
+}
+
+function codeJump(j) {
+    switch (j) {
+        case "null":
+            return "000";
+        case "JGT":
+            return "001";
+        case "JEQ":
+            return "010";
+        case "JGE":
+            return "011";
+        case "JLT":
+            return "100";
+        case "JNE":
+            return "101";
+        case "JLE":
+            return "110";
+        case "JMP":
+            return "111";
+    }
+}
+
+
+
+
+</script></head>
+<!-- 以下はHTMLなので関係無し -->
+<body>
+    <form name="form" style="width:800px">
+        <input type="button" onclick="run()" value="変換"><br><br>
+        <div style="float:left">
+            ■入力<br>
+            <textarea name="input" cols="50" rows="100">
+</textarea><br>
+        </div>
+        <div style="float:right">
+            ■出力<br>
+            <textarea readonly name="output" cols="50" rows="100"></textarea>
+        </div>
+    </form>
+</body>
+
+</html>
