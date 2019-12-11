@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class Code {
-    static String fileName;
     private List<CodeCommand> commands = new ArrayList<>();
 
     public static void main(String[] args) {
@@ -27,12 +26,10 @@ public class Code {
     private void read(String filePath) {
         File file = new File(filePath);
         try {
-            fileName = file.getName().replaceAll("\\..*", "");
-            String text;
             if (file.isDirectory()) {
                 // ブートストラップ呼び出し
-                commands.add(new CodeCommand("init"));
-                commands.add(new CodeCommand("call Sys.init 0"));
+                commands.add(new CodeCommand("", "init"));
+                commands.add(new CodeCommand("","call Sys.init 0"));
                 for (var f : Objects.requireNonNull(file.listFiles())) {
                     // vmファイルを読み込む
                     if (f.getName().contains(".vm")) {
@@ -50,14 +47,14 @@ public class Code {
     private void readFile(File file) throws IOException {
         String text = "";
         var fr = new FileReader(file);
-        fileName = file.getName().replaceAll("\\..*", "");
+        var fileName = file.getName().replaceAll("\\..*", "");
         BufferedReader br = new BufferedReader(fr);
 
         while ((text = br.readLine()) != null) {
             text = text.replaceAll("//.*", "");
             text = text.replaceAll("   *", "");
             if (text.equals("")) continue;
-            commands.add(new CodeCommand(text));
+            commands.add(new CodeCommand(fileName, text));
         }
         br.close();
     }
@@ -88,10 +85,12 @@ class CodeCommand {
     private static int ltCnt = 0;
 
     private static int[] counter;
+    private String fileName;
     private String txt;
     private String[] args;
 
-    CodeCommand(String command) {
+    CodeCommand(String fileName, String command) {
+        this.fileName = fileName;
         txt = command;
         args = command.split(" ");
     }
@@ -149,9 +148,9 @@ class CodeCommand {
                         "// LCL = *(FRAME-4)", "@R13", "AM=M-1", "D=M", "@LCL", "M=D",
                         "// goto_RET", "@R14", "A=M", "0;JMP"});
             case "call":
-                var r = "RET_ADDRESS_"+(++ra);
+                var raa = "RET_ADDRESS_"+(++CodeCommand.ra);
                 return contact(new String[]{
-                        "// push_return-address", "@" + r, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+                        "// push_return-address", "@" + raa, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
                         "// push_LCL", "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
                         "// push_ARG", "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
                         "// push_THIS", "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
@@ -159,7 +158,7 @@ class CodeCommand {
                         "// ARG = SP-n-5", "@SP", "D=M", "@5", "D=D-A", "@" + args[2], "D=D-A", "@ARG", "M=D",
                         "// LCL = SP", "@SP", "D=M", "@LCL", "M=D",
                         "// goto_f", "@" + args[1], "0;JMP",
-                        "// (" + r + ")", "(" + r + ")"});
+                        "// (" + raa + ")", "(" + raa + ")"});
             case "init":
                 return contact(new String[]{"@256", "D=A", "@SP", "M=D"});
         }
@@ -183,7 +182,7 @@ class CodeCommand {
             case "temp":
                 return contact(new String[]{"@" + (5 + Integer.parseInt(a)), "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"});
             case "static":
-                return contact(new String[]{"@" + (Code.fileName) + "." + a, "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"});
+                return contact(new String[]{"@" + (this.fileName) + "." + a, "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"});
         }
         return "";
     }
@@ -205,7 +204,7 @@ class CodeCommand {
             case "temp":
                 return contact(new String[]{"@SP", "AM=M-1", "D=M", "@" + (5 + Integer.parseInt(args[2])), "M=D"});
             case "static":
-                return contact(new String[]{"@SP", "AM=M-1", "D=M", "@" + (Code.fileName + "." + args[2]), "M=D"});
+                return contact(new String[]{"@SP", "AM=M-1", "D=M", "@" + (this.fileName + "." + args[2]), "M=D"});
         }
         return "";
     }
