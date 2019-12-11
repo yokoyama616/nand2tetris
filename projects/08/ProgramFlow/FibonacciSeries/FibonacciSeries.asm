@@ -1,4 +1,5 @@
-// push argument 1
+
+// argument
 @1
 D=A
 @ARG
@@ -9,13 +10,20 @@ A=M
 M=D
 @SP
 M=M+1
-// pop pointer 1
+// pointer
+@1
+D=A
+@3
+D=A+D
+@R13
+M=D
 @SP
 AM=M-1
 D=M
-@4
+@R13
+A=M
 M=D
-// push constant 0
+// push constant
 @0
 D=A
 @SP
@@ -23,20 +31,17 @@ A=M
 M=D
 @SP
 M=M+1
-// pop that 0
+// that
 @0
 D=A
 @THAT
-D=M+D
-@R13
-M=D
+M=M+D
 @SP
-AM=M-1
-D=M
-@R13
 A=M
 M=D
-// push constant 1
+@SP
+M=M+1
+// push constant
 @1
 D=A
 @SP
@@ -44,20 +49,17 @@ A=M
 M=D
 @SP
 M=M+1
-// pop that 1
+// that
 @1
 D=A
 @THAT
-D=M+D
-@R13
-M=D
+M=M+D
 @SP
-AM=M-1
-D=M
-@R13
 A=M
 M=D
-// push argument 0
+@SP
+M=M+1
+// argument
 @0
 D=A
 @ARG
@@ -68,7 +70,7 @@ A=M
 M=D
 @SP
 M=M+1
-// push constant 2
+// push constant
 @2
 D=A
 @SP
@@ -85,7 +87,7 @@ AM=M-1
 M=M-D
 @SP
 M=M+1
-// pop argument 0
+// argument
 @0
 D=A
 @ARG
@@ -98,9 +100,10 @@ D=M
 @R13
 A=M
 M=D
-// label MAIN_LOOP_START
+// label
 (MAIN_LOOP_START)
-// push argument 0
+
+// argument
 @0
 D=A
 @ARG
@@ -111,34 +114,34 @@ A=M
 M=D
 @SP
 M=M+1
-// if-goto COMPUTE_ELEMENT 
+// if-goto
 @SP
 AM=M-1
 D=M
 @COMPUTE_ELEMENT
 D;JNE
-// goto END_PROGRAM
+
+// goto 
 @END_PROGRAM
 0;JMP
-// label COMPUTE_ELEMENT
+// label
 (COMPUTE_ELEMENT)
-// push that 0
+
+// that
 @0
 D=A
 @THAT
-A=M+D
-D=M
+M=M+D
 @SP
 A=M
 M=D
 @SP
 M=M+1
-// push that 1
+// that
 @1
 D=A
 @THAT
-A=M+D
-D=M
+M=M+D
 @SP
 A=M
 M=D
@@ -150,31 +153,31 @@ AM=M-1
 D=M
 @SP
 AM=M-1
-M=D+M
+M=M+D
 @SP
 M=M+1
-// pop that 2
+// that
 @2
 D=A
 @THAT
-D=M+D
-@R13
-M=D
+M=M+D
 @SP
-AM=M-1
-D=M
-@R13
 A=M
 M=D
-// push pointer 1
-@4
+@SP
+M=M+1
+// pointer
+@1
+D=A
+@3
+A=A+D 
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-// push constant 1
+// push constant
 @1
 D=A
 @SP
@@ -188,16 +191,23 @@ AM=M-1
 D=M
 @SP
 AM=M-1
-M=D+M
+M=M+D
 @SP
 M=M+1
-// pop pointer 1
+// pointer
+@1
+D=A
+@3
+D=A+D
+@R13
+M=D
 @SP
 AM=M-1
 D=M
-@4
+@R13
+A=M
 M=D
-// push argument 0
+// argument
 @0
 D=A
 @ARG
@@ -208,7 +218,7 @@ A=M
 M=D
 @SP
 M=M+1
-// push constant 1
+// push constant
 @1
 D=A
 @SP
@@ -225,7 +235,7 @@ AM=M-1
 M=M-D
 @SP
 M=M+1
-// pop argument 0
+// argument
 @0
 D=A
 @ARG
@@ -238,8 +248,8 @@ D=M
 @R13
 A=M
 M=D
-// goto MAIN_LOOP_START
+// goto 
 @MAIN_LOOP_START
 0;JMP
-// label END_PROGRAM
+// label
 (END_PROGRAM)
