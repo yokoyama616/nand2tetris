@@ -27,11 +27,11 @@ class JackTokenizer {
     }
 
     public void write() {
-        StringBuilder body = new StringBuilder("<tokens>");
+        StringBuilder body = new StringBuilder("<tokens>\n");
         for (var t : tokenList) {
             body.append(t.convert());
         }
-        body.append("</tokens>");
+        body.append("</tokens>\n");
         var fileName = this.file.getName().replaceAll("\\..*", "");
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(this.file.getParent() + "\\" + fileName + "T.xml"))) {
             writer.append(body.toString());
@@ -47,7 +47,7 @@ class Token {
 
     private static final Map<String, String> SANITIZE = Map.of(
             "&", "&amp;",
-            "<", "&;t;",
+            "<", "&lt;",
             ">", "&gt;");
 
     private String token;
@@ -60,22 +60,25 @@ class Token {
         // 空文字
         if (this.token.equals("")) return "";
         if (KEYWORDS.contains(this.token)) {
-            return "<keyword> " + token + " </keyword>";
+            return "<keyword> " + token + " </keyword>\n";
         }
         if (SYMBOLS.contains((this.token))) {
-            return "<symbol> " + token + " </symbol>";
+            if(SANITIZE.containsKey(this.token)){
+                return "<symbol> " + SANITIZE.get(this.token) + " </symbol>\n";
+            }
+            return "<symbol> " + token + " </symbol>\n";
         }
         // "がある場合
         if (this.token.contains("\"")) {
-            return "<stringConstant> " + token + " </stringConstant>";
+            return "<stringConstant> " + token.replaceAll("\"","") + " </stringConstant>\n";
         }
 
         // 数値かの確認はもっといい方法あるきがする
         try {
             Integer.parseInt(this.token);
-            return "<integerConstant> " + token + " </integerConstant>";
+            return "<integerConstant> " + token + " </integerConstant>\n";
         } catch (NumberFormatException e) {
-            return "<identifier> " + token + " </identifier>";
+            return "<identifier> " + token + " </identifier>\n";
         }
     }
 
@@ -91,8 +94,8 @@ class Token {
                 tokens.add(new Token(prevStr));
                 prevStr = "";
 
-                var next = text.indexOf('"', i);
-                tokens.add(new Token(text.substring(i, next)));
+                var next = text.indexOf('"', i+1);
+                tokens.add(new Token(text.substring(i, next+1)));
                 i = next;
                 continue;
             }
