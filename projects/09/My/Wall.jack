@@ -1,0 +1,25 @@
+class Wall {
+   field int x;
+   field int z;
+   field int size; // length of this square, in pixels
+   field int weight;
+
+   constructor Wall new(int Ax) {
+      let x = Ax;
+      let size = 2;
+      let weight = 10;
+      do draw();
+      return this;
+   }
+
+   /** Disposes this square. */
+   method void dispose() {
+      do Memory.deAlloc(this);
+      return;
+   }
+
+   /** Draws the square on the screen. */
+   method void draw() {
+      return;
+   }
+}

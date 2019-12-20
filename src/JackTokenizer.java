@@ -52,7 +52,7 @@ class Token {
 
     private String token;
 
-    Token(String token) {
+    private Token(String token) {
         this.token = token;
     }
 
@@ -82,17 +82,17 @@ class Token {
         }
     }
 
-    public static ArrayList<Token> parseTokens(String text) {
+    static ArrayList<Token> parseTokens(String text) {
         var tokens = new ArrayList<Token>();
-        String prevStr = "";
+        StringBuilder prevStr = new StringBuilder();
         // 1文字調査
         for (var i = 0; i < text.length(); i++) {
             var check = text.charAt(i);
             // "が出現した場合は、次の"までを格納(見つからないのは想定しない)
             if (check == '"') {
                 // 今の保持しているものを登録
-                tokens.add(new Token(prevStr));
-                prevStr = "";
+                tokens.add(new Token(prevStr.toString()));
+                prevStr = new StringBuilder();
 
                 var next = text.indexOf('"', i+1);
                 tokens.add(new Token(text.substring(i, next+1)));
@@ -106,8 +106,7 @@ class Token {
                 if (check == '/') {
                     // 次の改行コードまでスキップ
                     if (text.charAt(i + 1) == '/') {
-                        var next = text.indexOf('\n', i);
-                        i = next;
+                        i = text.indexOf('\n', i);
                         continue;
                     }
                     // */が出現するまでスキップ
@@ -118,21 +117,21 @@ class Token {
                     }
                 }
                 // 前の文と今回のシンボルをTokenとして登録
-                tokens.add(new Token(prevStr));
+                tokens.add(new Token(prevStr.toString()));
                 tokens.add(new Token("" + check));
-                prevStr = "";
+                prevStr = new StringBuilder();
                 continue;
             }
             // 空白文字が来たならいまの段階のものを保持
             if (check == ' ') {
-                tokens.add(new Token(prevStr));
-                prevStr = "";
+                tokens.add(new Token(prevStr.toString()));
+                prevStr = new StringBuilder();
                 continue;
             }
             if (check == '\n') {
                 continue;
             }
-            prevStr += check;
+            prevStr.append(check);
         }
 
         return tokens;
