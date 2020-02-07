@@ -36,6 +36,7 @@ class CompilationEngine {
     compClass();
 
     var fileName = file.getName().replaceAll("\\..*", "");
+    fileName = fileName.substring(0, fileName.length() - 1);
     try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file.getParent() + "\\" + fileName + ".xml"))) {
       writer.append(result);
     } catch (IOException e) {
@@ -69,6 +70,7 @@ class CompilationEngine {
   }
 
   private void compClassVarDec() {
+    result += "<classVarDec>\n";
     if (get().check("static", "field")) write(next());
     compType();
     compVarName();
@@ -77,6 +79,7 @@ class CompilationEngine {
       compVarName();
     }
     write(next());
+    result += "</classVarDec>\n";
   }
 
   // ★
@@ -105,48 +108,69 @@ class CompilationEngine {
     result += "</subroutineDec>\n";
   }
 
-  private void compSubroutineBody(){
-      write(next());// {
-      while (checkVarDec())compVarDec();
-      compStatements();
-      write(next());// }
+  private void compSubroutineBody() {
+    result += "<subroutineBody>\n";
+    write(next());// {
+    while (checkVarDec()) compVarDec();
+    compStatements();
+    write(next());// }
+    result += "</subroutineBody>\n";
   }
 
-  private boolean checkVarDec(){
+  private boolean checkVarDec() {
     return get().check("var");
   }
-  private void compVarDec(){
+
+  private void compVarDec() {
+    result += "<varDec>\n";
     write(next());// var
     write(next());// type
     compVarName();
-    while (get().check(",")){
+    while (get().check(",")) {
       write(next());//,
-      write(next());//type
       compVarName();
     }
     write(next());//;
+    result += "</varDec>\n";
   }
 
-  private void compStatements(){
-    while(checkStatement())compStatement();
+  private void compStatements() {
+    result += "<statements>\n";
+    while (checkStatement()) compStatement();
+    result += "</statements>\n";
   }
-  private boolean checkStatement(){
+
+  private boolean checkStatement() {
     return get().check("let", "if", "while", "do", "return");
   }
-  private void compStatement(){
-    switch (get().val){
-      case "let":compLetStatement();break;
-      case "if":compIfStatement();break;
-      case "while":compWhileStatement();break;
-      case "do":compDoStatement();break;
-      case "return":compReturnStatement();break;
-      default:break;
+
+  private void compStatement() {
+    switch (get().val) {
+      case "let":
+        compLetStatement();
+        break;
+      case "if":
+        compIfStatement();
+        break;
+      case "while":
+        compWhileStatement();
+        break;
+      case "do":
+        compDoStatement();
+        break;
+      case "return":
+        compReturnStatement();
+        break;
+      default:
+        break;
     }
   }
-  private void compLetStatement(){
+
+  private void compLetStatement() {
+    result += "<letStatement>\n";
     write(next());// let
     compVarName();
-    if(get().check("[")){
+    if (get().check("[")) {
       write(next());//[
       compExpression();
       write(next());//]
@@ -154,8 +178,11 @@ class CompilationEngine {
     write(next());//=
     compExpression();
     write(next());//;
+    result += "</letStatement>\n";
   }
-  private void compIfStatement(){
+
+  private void compIfStatement() {
+    result += "<ifStatement>\n";
     write(next());//if
     write(next());//(
     compExpression();
@@ -163,14 +190,17 @@ class CompilationEngine {
     write(next());//{
     compStatements();
     write(next());//}
-    if(get().check("else")) {
+    if (get().check("else")) {
       write(next());//else
       write(next());//{
       compStatements();
       write(next());//}
     }
+    result += "</ifStatement>\n";
   }
-  private void compWhileStatement(){
+
+  private void compWhileStatement() {
+    result += "<whileStatement>\n";
     write(next());//while
     write(next());//(
     compExpression();
@@ -178,37 +208,133 @@ class CompilationEngine {
     write(next());//{
     compStatements();
     write(next());//}
+    result += "</whileStatement>\n";
   }
 
-  private void compDoStatement(){
+  private void compDoStatement() {
+    result += "<doStatement>\n";
     write(next());// do
     compSubroutineCall();
     write(next());//;
-  }
-  private void compReturnStatement(){
-    write(next());//return
-    if(checkExpression())compExpression();
-    write(next());//;
+    result += "</doStatement>\n";
   }
 
-  private boolean checkExpression(){
+  private void compReturnStatement() {
+    result += "<returnStatement>\n";
+    write(next());//return
+    if (checkExpression()) compExpression();
+    write(next());//;
+    result += "</returnStatement>\n";
+  }
+
+  private boolean checkExpression() {
     return checkTerm();
   }
-  private void compExpression(){
 
+  private void compExpression() {
+    result += "<expression>\n";
+    compTerm();
+    while (checkOp()) {
+      compOp();
+      compTerm();
+    }
+    result += "</expression>\n";
   }
 
-  // TODO:未実装
-  private boolean checkTerm(){
-    return false;
+  private void compTerm() {
+    result += "<term>\n";
+    if (isSubroutineCall() != 0) {
+      compSubroutineCall();
+    } else if (get().isIntegerConstant()) {
+      write(next());
+    } else if (get().isStringConstant()) {
+      write(next());
+    } else if (get().isKeywordConstant()) {
+      write(next());
+    } else if (get().isIdentifier()) {
+      write(next());
+      if (get().check("[")) {
+        write(next());// [
+        compExpression();
+        write(next());// ]
+      }
+    } else if (get().check("(")) {
+      write(next());// (
+      compExpression();
+      write(next());// )
+    } else if (get().isUnaryOp()) {
+      write(next());
+      compTerm();
+    }
+
+    result += "</term>\n";
   }
 
-  private void compParameterList(){
+  private boolean checkTerm() {
+    return isSubroutineCall() != 0 || get().isIntegerConstant() || get().isStringConstant() || get().isKeywordConstant() || get().isIdentifier() ||  get().check("(") || get().isUnaryOp();
+  }
+
+  // ★
+  private void compOp() {
+    write(next());
+  }
+
+  // ★
+  private boolean checkOp() {
+    return get().check("+", "-", "*", "/", "&", "|", "<", ">", "=");
+  }
+
+
+  private void compSubroutineCall() {
+    var s = isSubroutineCall();
+    if(s == 1) {
+      compSubroutineName();
+      write(next());//(
+      compExpressionList();
+      write(next());//)
+    } else if(s == 2){
+      write(next());// identifier
+      write(next());// .
+      compSubroutineName();
+      write(next());//(
+      compExpressionList();
+      write(next());//)
+    }
+  }
+
+  private int isSubroutineCall() {
+    if(get().isIdentifier()) {
+      if(getA(1).check("(")){
+        return 1;
+      } else if(getA(1).check(".") && getA(2).isIdentifier() && getA(3).check("(")){
+        return 2;
+      }
+    }
+    return 0;
+  }
+
+  private void compExpressionList() {
+    result += "<expressionList>\n";
+    if (checkExpression()) {
+      compExpression();
+      while (get().check(",")) {
+        write(next());// ,
+        compExpression();
+      }
+    }
+    result += "</expressionList>\n";
+  }
+
+  private void compSubroutineName() {
+    write(next());
+  }
+
+  private void compParameterList() {
     result += "<parameterList>\n";
-    if(checkParameterList()) {
+    if (checkParameterList()) {
       write(next());// type
       compVarName();
-      while (get().check(",")){
+      while (get().check(",")) {
         write(next());//,
         write(next());//type
         compVarName();
@@ -216,7 +342,8 @@ class CompilationEngine {
     }
     result += "</parameterList>\n";
   }
-  private boolean checkParameterList(){
+
+  private boolean checkParameterList() {
     return get().isType();
   }
 
@@ -224,12 +351,17 @@ class CompilationEngine {
     return tokens.get(n);
   }
 
+  private CToken getA(int i) {
+    return tokens.get(n + i);
+  }
+
   private CToken next() {
     return tokens.get(n++);
   }
 
   private void write(CToken ct) {
-    result += "<" + ct.type + "> " + ct.val + " </" + ct.type + ">\n";
+    var v = ct.val.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">","&gt;");
+    result += "<" + ct.type + "> " + v + " </" + ct.type + ">\n";
   }
 }
 
@@ -242,7 +374,7 @@ class CToken {
     Matcher m = p.matcher(line);
     if (m.find()) {
       this.type = m.group(1).trim();
-      this.val = m.group(2).trim();
+      this.val = m.group(2).trim().replaceAll("&lt;", "<").replaceAll("&gt;",">").replaceAll("&amp;", "&");
     }
   }
 
@@ -256,5 +388,25 @@ class CToken {
 
   public boolean isIdentifier() {
     return this.type.equals("identifier");
+  }
+
+  public boolean isIntegerConstant() {
+    return this.type.equals("integerConstant");
+  }
+
+  public boolean isStringConstant() {
+    return this.type.equals("stringConstant");
+  }
+
+  public boolean isSymbol() {
+    return this.type.equals("symbol");
+  }
+
+  public boolean isKeywordConstant() {
+    return this.check("true", "false", "null", "this");
+  }
+
+  public boolean isUnaryOp() {
+    return this.check("-", "~");
   }
 }
